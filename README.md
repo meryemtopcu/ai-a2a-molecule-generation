@@ -1,93 +1,122 @@
 # AI in drug discovery - Group2
 
+# SUMMARY
+## Task 1: Problem Definition ✅ (attached docx file)
+Output: 2-page report (PDF/Word) with APA references
+What to include:
+- What is the A2A receptor and why is it important?
+- Why do we need new molecules?
+- What are Pocket2Mol and DiffSBDD?
+- What other methods exist?
+  
+## Task 2: Method Training 🔧
+Output: Annotated source code (Python)
+What to do:
+- Download PDB 4EIY crystal structure
+- Clean the structure (remove ligand, water molecules)
+- Run Pocket2Mol → generate ≥100 molecules
+- Run DiffSBDD → generate ≥100 molecules
+- Compute molecular properties (MW, LogP, QED, etc.)
+- Tanimoto similarity vs. known A2A actives
+- Create histograms and heatmaps
 
+## Task 3: Results Summary 🎤
+Output: Presentation in front of class (20 min + 5 min Q&A)
+Slides should cover:
+- Introduction (A2A biology)
+- Methods (Pocket2Mol vs DiffSBDD)
+- Results (generated molecules, property analysis)
+- Discussion (which tool is better and why?)
+- Conclusion & outlook
 
 ## Getting started
+Install pymol
+'''clean the file with
+load 4EIY.pdb
+remove solvent
+remove inorganic
+select prot, polymer.protein
+create clean_protein, prot
+save 4EIY_clean.pdb, clean_protein'''
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+### How to find the binding pocket
+The Pocket2Mol and DiffSBDD runs use the center of the co-crystallized ligand ZM241385 before it is removed from the structure.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Workflow in PyMOL:
 
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+```pymol
+load 4EIY.pdb
+remove solvent
+remove inorganic
+remove resn OLA+OLC
+remove chain B
+select prot, polymer.protein
+create clean_protein, prot
+save 4EIY_clean.pdb, clean_protein
 ```
-cd existing_repo
-git remote add origin https://gitlab.fhnw.ch/ccc/ai-in-drug-discovery-group2.git
-git branch -M main
-git push -uf origin main
+
+The pocket center used in this project is:
+
+```text
+x = -0.42, y = 8.53, z = 17.13
 ```
 
-## Integrate with your tools
+These coordinates correspond to the ligand position and can be passed directly to `sample_for_pdb.py`.
 
-* [Set up project integrations](https://gitlab.fhnw.ch/ccc/ai-in-drug-discovery-group2/-/settings/integrations)
+## Install pocket2mol
+There are several architectures, the conda.env is for OSARM64 and does not work with Apple M Processors. Use the file [env_cuda113_APPLE.yml](env_cuda113_APPLE.yml)
 
-## Collaborate with your team
+### Install via conda yaml file (cuda 11.3)
+'''conda env create -f env_cuda113_APPLE.yml
+conda activate Pocket2Mol'''
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+### macOS-specific Pocket2Mol changes
+This repository has a few changes so Pocket2Mol can run on macOS without CUDA:
 
-## Test and Deploy
+```text
+- checkpoint paths are resolved relative to Pocket2Mol/ so you can run from the repo root
+- CUDA is optional; the sampling scripts fall back to CPU when torch.cuda is unavailable
+- torch-cluster / torch-scatter calls have pure PyTorch fallbacks for KNN and scatter operations
+```
 
-Use the built-in continuous integration in GitLab.
+The pretrained checkpoint is expected at [Pocket2Mol/ckpt/pretrained_Pocket2Mol.pt](Pocket2Mol/ckpt/pretrained_Pocket2Mol.pt).
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+## PDB Structure Preparation — 4EIY
 
-***
+### Overview
+The crystal structure of the A2A adenosine receptor (PDB: 4EIY) was 
+downloaded from the RCSB Protein Data Bank. The structure was solved 
+at 1.8 Å resolution and contains the co-crystallized antagonist ZM241385.
 
-# Editing this README
+## Cleaning Steps (performed in PyMOL)
+The following components were removed to obtain a clean receptor structure:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+- **HOH** — water molecules (185 atoms removed)
+- **ZMA** — co-crystallized ligand ZM241385 (25 atoms removed)
+- **NA** — sodium ion (1 atom removed)
+- **OLA, OLC** — lipid molecules from membrane mimetic
+- **Chain B** — BRIL fusion protein used for crystallization
 
-## Suggestions for a good README
+## Output
+Clean structure saved as: `data/4eiy_clean.pdb`
+Original structure retained as: `data/4eiy.pdb`
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+## Binding Pocket Center
+The center of the binding pocket was determined from the ZM241385 
+ligand position prior to removal:
+- Coordinates: **(x=-0.42, y=8.53, z=17.13)**
 
-## Name
-Choose a self-explaining name for your project.
+### How to run Pocket2Mol
+Run the sampling command from the repository root after placing the checkpoint in [Pocket2Mol/ckpt/pretrained_Pocket2Mol.pt](Pocket2Mol/ckpt/pretrained_Pocket2Mol.pt):
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+```bash
+python Pocket2Mol/sample_for_pdb.py \
+	--pdb_path Pocket2Mol/data/4EIY_clean.pdb \
+	--config Pocket2Mol/configs/sample_for_pdb.yml \
+	--center " -0.42,8.53,17.13"
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+The leading space before the first coordinate is required because the x-value is negative.
+- These coordinates will be used as input for Pocket2Mol and DiffSBDD
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
