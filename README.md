@@ -62,6 +62,7 @@ x = -0.42, y = 8.53, z = 17.13
 ```
 
 These coordinates correspond to the ligand position and can be passed directly to `sample_for_pdb.py`.
+By default, Pocket2Mol writes generated files to a local `./outputs` folder, so no symlink or environment variable is required for other developers.
 
 ## Install pocket2mol
 There are several architectures, the conda.env is for OSARM64 and does not work with Apple M Processors. Use the file [env_cuda113_APPLE.yml](env_cuda113_APPLE.yml)
@@ -117,6 +118,7 @@ python Pocket2Mol/sample_for_pdb.py \
 ```
 
 The leading space before the first coordinate is required because the x-value is negative.
+If you want to store outputs somewhere else, pass `--outdir /path/to/folder` explicitly.
 - These coordinates will be used as input for Pocket2Mol and DiffSBDD
 
 

@@ -63,6 +63,9 @@ Then, run the following command:
 python sample.py --data_id {i} --outdir ./outputs  # Replace {i} with the index of the data. i should be between 0 and 99 for the testset.
 ```
 
+The `--outdir` argument is optional in the sense that `./outputs` is the default, so new developers can run the script without any extra environment setup.
+If you want to write to SWITCH Drive or another location, pass the full path explicitly with `--outdir /path/to/folder`.
+
 We recommend to specify the GPU device number and restrict the cpu cores using command like:
 
 ```bash

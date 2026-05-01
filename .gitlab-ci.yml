@@ -1,0 +1,12 @@
+sync_outputs:
+  stage: build
+  image: debian:stable
+
+  script:
+    - apt-get update && apt-get install -y rclone
+    - mkdir -p outputs
+    - rclone copy switchdrive:your/path outputs/
+
+  artifacts:
+    paths:
+      - outputs/
