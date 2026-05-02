@@ -116,6 +116,9 @@ python Pocket2Mol/sample_for_pdb.py \
 	--config Pocket2Mol/configs/sample_for_pdb.yml \
 	--center " -0.42,8.53,17.13"
 ```
+'''
+conda run -n Pocket2Mol --no-capture-output python sample_for_pdb.py --pdb_path Pocket2Mol/data/4eiy_clean.pdb --config Pocket2Mol/sample_for_pdb.py --center " -0.42,8.53,17.13"
+'''
 
 The leading space before the first coordinate is required because the x-value is negative.
 If you want to store outputs somewhere else, pass `--outdir /path/to/folder` explicitly.
