@@ -3,4 +3,4 @@ test:
   script:
     - apt-get update && apt-get install -y rclone
     - rclone config show
-    - rclone ls switchdrive:
+    - rclone ls switchdrive
