@@ -1,6 +1,14 @@
 import os
 import argparse
 import warnings
+
+_CPU_THREADS = '12'
+os.environ['OMP_NUM_THREADS'] = _CPU_THREADS
+os.environ['MKL_NUM_THREADS'] = _CPU_THREADS
+os.environ['OPENBLAS_NUM_THREADS'] = _CPU_THREADS
+os.environ['VECLIB_MAXIMUM_THREADS'] = _CPU_THREADS
+os.environ['NUMEXPR_NUM_THREADS'] = _CPU_THREADS
+
 from easydict import EasyDict
 from Bio import BiopythonWarning
 from Bio.PDB.PDBParser import PDBParser
@@ -64,6 +72,10 @@ def pdb_to_pocket_data(pdb_path, center, bbox_size):
 
 
 if __name__ == '__main__':
+    # Keep CPU threading explicit for reproducible runtime behavior on macOS.
+    torch.set_num_threads(12)
+    torch.set_num_interop_threads(12)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--pdb_path', type=str,
                         default='./example/4yhj.pdb')
