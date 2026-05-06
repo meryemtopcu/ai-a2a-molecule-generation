@@ -2,3 +2,7 @@ Pocket2Mol/ckpt/
 outputs/
 Pocket2Mol/outputs/
 
+# Keep outputs2 in the repo, but do not sync generated SDF files.
+outputs2/*.sdf
+outputs2/**/*.sdf
+

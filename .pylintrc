@@ -1,0 +1,15 @@
+[MASTER]
+extension-pkg-allow-list=rdkit
+jobs=1
+
+[MESSAGES CONTROL]
+# Disable duplicate-code warnings (legacy third-party code).
+disable=R0801
+
+[FORMAT]
+# Keep consistent with our current lint runs
+max-line-length=100
+
+[REPORTS]
+output-format=text
+score=no
