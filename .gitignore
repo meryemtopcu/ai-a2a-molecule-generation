@@ -1,3 +1,19 @@
+Pocket2Mol/ckpt/
+outputs/
+Pocket2Mol/outputs/
+
+# Keep outputs2 in the repo, but do not sync generated SDF files.
+outputs2/*.sdf
+outputs2/**/*.sdf
+
+Pocket2Mol/ckpt/
+outputs/
+Pocket2Mol/outputs/
+
+# Keep outputs2 in the repo, but do not sync generated SDF files.
+outputs2/*.sdf
+outputs2/**/*.sdf
+
 # PyTorch checkpoint files
 *.pt
 *.ckpt
@@ -22,11 +38,15 @@ __pycache__/
 # Conda environments
 *.egg-info/
 
+# not commit folder
+not_commit/
 
-
-# Pocket2mol files - downloaded 
+# Pocket2mol files
 pocket2mol/Pocket2Mol/
 
-#SDF files 
+# SDF and pt files
 outputs/pocket2mol/sample_4eiy_clean.pdb_2026_04_28__12_28_34/SDF_pt_files/
-not_commit/
+
+# Analysis files
+*.docx
+
