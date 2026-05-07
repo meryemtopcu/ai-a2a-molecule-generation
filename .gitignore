@@ -22,11 +22,11 @@ __pycache__/
 # Conda environments
 *.egg-info/
 
-# manual file
+
+
+# Pocket2mol files - downloaded 
+pocket2mol/Pocket2Mol/
+
+#SDF files 
+outputs/pocket2mol/sample_4eiy_clean.pdb_2026_04_28__12_28_34/SDF_pt_files/
 not_commit/
-not commit /
-
-
-pocket2mol/Pocket2Mol/
-pocket2mol/Pocket2Mol/
-*.sdf
