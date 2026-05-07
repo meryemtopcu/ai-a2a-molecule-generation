@@ -1,0 +1,38 @@
+name: Pocket2Mol
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.9
+  - pip
+
+  # Core scientific stack
+  - numpy<2
+  - scipy
+  - pandas
+  - scikit-learn
+
+  # PyTorch (CPU / MPS compatible on Apple Silicon)
+  - pytorch
+  - torchvision
+  - torchaudio
+
+  # Common utilities used in ML repos
+  - tqdm
+  - pyyaml
+
+  # Cheminformatics
+  - rdkit
+
+  # Install remaining pip deps from repo
+  - pip:
+      - biopython
+      - networkx
+      - easydict
+      - lmdb
+      - torch-geometric==2.3.0
+      - torch-scatter
+      - torch-sparse
+      - torch-cluster
