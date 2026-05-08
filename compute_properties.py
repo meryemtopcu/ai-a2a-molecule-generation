@@ -301,10 +301,20 @@ def load_a2a_reference_fingerprints(a2a_sdf_file):
         #  Only store fingerprints that were successfully computed
         if fp is not None:
             fingerprints.append(fp)
-            #  Use molecule name property if available, else use index
-            mol_name = (
-                mol.GetProp('_Name') if mol.HasProp('_Name') else f'A2A_{idx}'
-            )
+            # Prefer a stable identifier: use 'zinc_id' if available, then _Name, then SMILES, then index
+            mol_name = None
+            try:
+                if mol.HasProp('zinc_id'):
+                    mol_name = mol.GetProp('zinc_id')
+                elif mol.HasProp('_Name'):
+                    mol_name = mol.GetProp('_Name')
+                else:
+                    # Fallback to canonical SMILES where possible
+                    mol_name = Chem.MolToSmiles(mol) if Chem.MolToSmiles(mol) else None
+            except Exception:
+                mol_name = None
+            if not mol_name:
+                mol_name = f'A2A_{idx}'
             names.append(mol_name)
 
     return {'fingerprints': fingerprints, 'names': names}
@@ -382,6 +392,84 @@ def load_molecules_from_path2(path2):
     return molecules
 
 
+def _fragment_count(mol):
+    """Return the number of disconnected fragments in a molecule."""
+    try:
+        return len(Chem.GetMolFrags(mol, asMols=False))
+    except Exception:
+        return None
+
+
+def report_fragmentation(molecules, source_name):
+    """Print how many loaded molecules are fragmented for a source."""
+    per_file = {}
+    total_fragmented = 0
+    total_loaded = len(molecules)
+
+    for name, mol in molecules:
+        file_name = name.split('#', 1)[0]
+        fragment_count = _fragment_count(mol)
+        if fragment_count is None:
+            per_file.setdefault(file_name, {'fragmented': 0, 'loaded': 0, 'invalid': 0})
+            per_file[file_name]['invalid'] += 1
+            continue
+
+        per_file.setdefault(file_name, {'fragmented': 0, 'loaded': 0, 'invalid': 0})
+        per_file[file_name]['loaded'] += 1
+        if fragment_count > 1:
+            per_file[file_name]['fragmented'] += 1
+            total_fragmented += 1
+
+    if not molecules:
+        print(f'{source_name}: no molecules loaded')
+        return {'total_loaded': 0, 'total_fragmented': 0, 'per_file': per_file}
+
+    print(f'\nFragmentation check for {source_name}:')
+    for file_name in sorted(per_file):
+        counts = per_file[file_name]
+        if counts['invalid'] and not counts['loaded']:
+            print(f'  {file_name}: {counts["invalid"]} invalid molecules, no fragment count available')
+        else:
+            print(
+                f'  {file_name}: {counts["fragmented"]} fragmented molecule(s) '
+                f'out of {counts["loaded"]} loaded'
+            )
+    print(f'  Total fragmented in {source_name}: {total_fragmented} / {total_loaded}')
+    return {'total_loaded': total_loaded, 'total_fragmented': total_fragmented, 'per_file': per_file}
+
+
+def filter_fragmented_molecules(molecules):
+    """Keep only molecules that are a single disconnected fragment."""
+    filtered = []
+    removed = 0
+    for name, mol in molecules:
+        if _fragment_count(mol) == 1:
+            filtered.append((name, mol))
+        else:
+            removed += 1
+    return filtered, removed
+
+
+def prompt_fragmentation_action(path1_molecules, path2_molecules):
+    """Ask whether to continue with fragmented molecules or filter them out."""
+    report_fragmentation(path1_molecules, 'PATH1')
+    report_fragmentation(path2_molecules, 'PATH2')
+    print('\nFragmented molecules detected.')
+    print('1. Run anyway')
+    print('2. Run without fragmented molecules')
+    print('3. QUIT')
+
+    while True:
+        choice = input('Select an option [1/2/3]: ').strip().lower()
+        if choice in {'1', 'run anyway', 'run', 'y', 'yes'}:
+            return 'run_anyway'
+        if choice in {'2', 'run without fragmented', 'filter', 'filtered'}:
+            return 'filter_fragmented'
+        if choice in {'3', 'quit', 'q', 'exit'}:
+            return 'quit'
+        print('Please enter 1, 2, or 3.')
+
+
 #  ============================================================================
 #  I/O and Comparison Utilities
 #  ============================================================================
@@ -424,9 +512,6 @@ def save_properties_to_csv(molecules_data, output_file, append=False):
             print(f"Created empty CSV header in {output_file}")
         else:
             print(f"No rows to append to {output_file}")
-
-
-#  legacy JSON save removed (not used)
 
 
 def compare_properties(properties1, properties2):
@@ -537,6 +622,29 @@ def compute_similarity_matrix(molecules, reference_data):
         return None, [], reference_names
 
     return np.array(matrix, dtype=float), labels, reference_names
+
+
+def save_similarity_matrix_csv(matrix, row_labels, col_labels, out_file):
+    """Save a numeric similarity matrix to CSV.
+
+    The CSV will have the reference labels as columns and the generated molecule
+    labels as the first column.
+    """
+    out_path = Path(out_file)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, 'w', newline='', encoding='utf-8') as fout:
+        writer = csv.writer(fout)
+        # Prepare column labels: validate provided col_labels or fall back to ref_i
+        n_cols = matrix.shape[1]
+        if col_labels and isinstance(col_labels, (list, tuple)) and len(col_labels) == n_cols:
+            header_cols = [lbl if lbl else f'ref_{i}' for i, lbl in enumerate(col_labels)]
+        else:
+            header_cols = [f'ref_{i}' for i in range(n_cols)]
+        header = ['generated'] + header_cols
+        writer.writerow(header)
+        for i, row in enumerate(matrix):
+            label = row_labels[i] if row_labels and i < len(row_labels) and row_labels[i] else f'gen_{i}'
+            writer.writerow([label] + [f'{v:.6f}' for v in row])
 
 
 def plot_similarity_comparison(
@@ -818,6 +926,25 @@ def main():
     if not path1_molecules and not path2_molecules:
         print('Error: Could not load molecules from PATH1 or PATH2.')
         return
+
+    #  === STEP 2.25: Check for fragmented molecules ===
+    fragmentation_choice = None
+    if path1_molecules or path2_molecules:
+        path1_fragmented = sum(1 for _, mol in path1_molecules if _fragment_count(mol) not in (None, 1))
+        path2_fragmented = sum(1 for _, mol in path2_molecules if _fragment_count(mol) not in (None, 1))
+        if path1_fragmented or path2_fragmented:
+            fragmentation_choice = prompt_fragmentation_action(path1_molecules, path2_molecules)
+            if fragmentation_choice == 'quit':
+                print('Quitting without running property calculations.')
+                return
+            if fragmentation_choice == 'filter_fragmented':
+                if path1_molecules:
+                    path1_molecules, removed1 = filter_fragmented_molecules(path1_molecules)
+                    print(f'Removed {removed1} fragmented molecule(s) from PATH1')
+                if path2_molecules:
+                    path2_molecules, removed2 = filter_fragmented_molecules(path2_molecules)
+                    print(f'Removed {removed2} fragmented molecule(s) from PATH2')
+
     #  === STEP 2.5: Remove Duplicates ===
     #  Filter duplicates based on SMILES strings before validation
     path1_duplicates = 0
@@ -935,6 +1062,14 @@ def main():
         pocket2mol_matrix, pocket2mol_labels, _ = compute_similarity_matrix(
             valid1, reference_data
         )
+        # Save full numeric matrix for Pocket2Mol
+        if pocket2mol_matrix is not None:
+            save_similarity_matrix_csv(
+                pocket2mol_matrix,
+                pocket2mol_labels,
+                reference_data.get('names', []),
+                output_dir / 'pocket2mol_similarity_matrix.csv',
+            )
 
     diffsbdd_matrix = None
     diffsbdd_labels = []
@@ -942,6 +1077,14 @@ def main():
         diffsbdd_matrix, diffsbdd_labels, _ = compute_similarity_matrix(
             valid2, reference_data
         )
+        # Save full numeric matrix for DiffSBDD
+        if diffsbdd_matrix is not None:
+            save_similarity_matrix_csv(
+                diffsbdd_matrix,
+                diffsbdd_labels,
+                reference_data.get('names', []),
+                output_dir / 'diffsbdd_similarity_matrix.csv',
+            )
 
     plot_similarity_comparison(
         csv_file1,

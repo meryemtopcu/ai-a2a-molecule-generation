@@ -39,4 +39,23 @@ def combine_sdfs(input_path, output_file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 3:
-        combine_sdfs(sys.argv[1], sys.argv[2])
+        input_path = sys.argv[1]
+        output_file = sys.argv[2]
+    elif len(sys.argv) == 2:
+        input_path = sys.argv[1]
+        p = Path(input_path)
+        if p.is_dir():
+            output_file = p / "combined.sdf"
+        else:
+            output_file = p.with_name(p.stem + "_combined.sdf")
+    else:
+        print("Usage: python combine_sdfs.py <input_dir_or_sdf> [output_file]")
+        sys.exit(1)
+
+    success = combine_sdfs(input_path, output_file)
+    if success:
+        print(f"Combined SDF written to: {output_file}")
+        sys.exit(0)
+    else:
+        print("No molecules written; check input path and SDF files.")
+        sys.exit(2)
