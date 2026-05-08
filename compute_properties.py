@@ -18,8 +18,7 @@ Workflow:
    - QED (quantitative estimate of drug-likeness): >0.5 ideal
    - SA Score (synthetic accessibility): ≤4 ideal (lower = easier to synthesize)
    - Lipinski's Rule of Five (binary sum: 0-5 violations)
-   - Tanimoto similarity vs. A2A reference set (max of all pairwise comparisons)
-   - Nearest active: name/ID of closest A2A molecule
+    - Tanimoto similarity vs. A2A reference set (max of all pairwise comparisons)
 5. Save results to CSV files (separate for PATH1 and PATH2)
 6. Compare properties between paired molecules if both paths present
 
@@ -34,7 +33,7 @@ Output:
 - pocket2mol_generated.csv (always created)
 - diffsbdd_generated.csv (always created)
 CSV columns: smiles, valid, MW, LogP, HBA, HBD, TPSA, RotBonds, QED,
-             SA_score, Lipinski, max_tanimoto, nearest_active
+             SA_score, Lipinski, max_tanimoto
 """
 
 #  Standard library imports
@@ -221,15 +220,15 @@ def compute_tanimoto_similarity(mol, reference_data):
             load_a2a_reference_fingerprints()
         
     Returns:
-        tuple: (max_similarity, nearest_active_name) or (None, None) on failure
+        float: maximum similarity, or None on failure
     """
     try:
         if not reference_data or not reference_data.get('fingerprints'):
-            return None, None
+            return None
         #  Generate fingerprint for query molecule
         fp = get_morgan_fingerprint(mol)
         if fp is None:
-            return None, None
+            return None
         #  Compute similarity to each reference fingerprint
         similarities = []
         for ref_fp in reference_data['fingerprints']:
@@ -237,20 +236,11 @@ def compute_tanimoto_similarity(mol, reference_data):
             similarities.append(sim)
 
         if not similarities:
-            return None, None
+            return None
 
-        #  Find max similarity and corresponding A2A name
-        max_idx = similarities.index(max(similarities))
-        max_similarity = max(similarities)
-        nearest_active = (
-            reference_data['names'][max_idx]
-            if max_idx < len(reference_data['names'])
-            else None
-        )
-
-        return max_similarity, nearest_active
+        return max(similarities)
     except Exception:
-        return None, None
+        return None
 
 
 def get_morgan_fingerprint(mol):
@@ -400,11 +390,11 @@ def save_properties_to_csv(molecules_data, output_file, append=False):
     
     Args:
         molecules_data: list of dicts with keys: smiles, valid, MW, LogP, HBA, HBD, TPSA,
-                       RotBonds, QED, SA_score, Lipinski, max_tanimoto, nearest_active
+                   RotBonds, QED, SA_score, Lipinski, max_tanimoto
         output_file: path to output CSV file
     """
     fieldnames = ['smiles', 'valid', 'MW', 'LogP', 'HBA', 'HBD', 'TPSA', 'RotBonds',
-                  'QED', 'SA_score', 'Lipinski', 'max_tanimoto', 'nearest_active']
+                  'QED', 'SA_score', 'Lipinski', 'max_tanimoto']
 
     #  Default behavior: overwrite file. If append=True, append rows and skip
     #  header when file exists.
@@ -879,8 +869,8 @@ def main():
         for name, mol in valid1:
             props = compute_properties(mol)
             if props is not None:
-                #  Compute Tanimoto similarity and nearest active
-                max_tanimoto, nearest_active = compute_tanimoto_similarity(mol, reference_data)
+                #  Compute Tanimoto similarity vs. the reference set
+                max_tanimoto = compute_tanimoto_similarity(mol, reference_data)
                 #  Build CSV row
                 csv_row = {
                     'smiles': get_smiles(mol),
@@ -899,7 +889,6 @@ def main():
                     ),
                     'Lipinski': props['LipinskiRuleOfFive'],
                     'max_tanimoto': round(max_tanimoto, 4) if max_tanimoto is not None else None,
-                    'nearest_active': nearest_active
                 }
                 csv_data1.append(csv_row)
         print(f"Computed properties for {len(csv_data1)} molecules in PATH1")
@@ -908,8 +897,8 @@ def main():
     for name, mol in valid2:
         props = compute_properties(mol)
         if props is not None:
-            #  Compute Tanimoto similarity and nearest active
-            max_tanimoto, nearest_active = compute_tanimoto_similarity(mol, reference_data)
+            #  Compute Tanimoto similarity vs. the reference set
+            max_tanimoto = compute_tanimoto_similarity(mol, reference_data)
             #  Build CSV row
             csv_row = {
                 'smiles': get_smiles(mol),
@@ -924,7 +913,6 @@ def main():
                 'SA_score': round(props['SA_score'], 2) if props['SA_score'] is not None else None,
                 'Lipinski': props['LipinskiRuleOfFive'],
                 'max_tanimoto': round(max_tanimoto, 4) if max_tanimoto is not None else None,
-                'nearest_active': nearest_active
             }
             csv_data2.append(csv_row)
     print(f"Computed properties for {len(csv_data2)} molecules in PATH2")

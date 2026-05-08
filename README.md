@@ -108,32 +108,56 @@ conda run -n diffsbdd python DiffSBDD-main/inpaint.py \
 ```
 
 ## Compute and Compare Properties
-Script:
-- [compute_properties.py](compute_properties.py)
+Use `compute_properties.py` to validate generated molecules, compute standard descriptors, and record similarity to known A2A actives.
 
-Current workflow in script:
-1. Loads Pocket2Mol outputs from a PATH1 SDF folder (optional).
-2. Loads DiffSBDD outputs from a PATH2 multi-molecule SDF or a directory containing split files.
-3. Loads known A2A actives from [outputs2/a2a_drugs/ADORA2A-world.sdf](outputs2/a2a_drugs/ADORA2A-world.sdf).
-4. Validates molecules and reports invalid counts per path.
-5. Computes for each valid molecule:
-   - **SMILES**: Canonical SMILES representation
-   - **MW** (Molecular Weight, ideal: 150–500 Da): Descriptors.MolWt()
-   - **LogP** (Lipophilicity, ideal: −0.4 – 5.6): Descriptors.MolLogP()
-   - **HBA / HBD** (H-bond Acceptors/Donors, ideal: ≤10 / ≤5): NumHAcceptors() / NumHDonors()
-   - **TPSA** (Topological Polar Surface Area, ideal: ≤140 Å²): Descriptors.TPSA()
-   - **RotBonds**: Rotatable bonds (indicator of molecular flexibility)
-   - **QED** (Quantitative Estimate of Drug-Likeness, ideal: >0.5)
-   - **SA Score** (Synthetic Accessibility, ideal: ≤4, lower = easier to synthesize): sascorer.calculateScore()
-   - **Lipinski Rule of Five**: Count of violations (0 ideal, max 1 for drugs)
-   - **max_tanimoto**: Maximum Tanimoto similarity vs. known A2A actives (0–1 scale)
-   - **nearest_active**: Name/ID of closest A2A active molecule
+What it does (high level)
+- Loads generated molecules (Pocket2Mol one-file-per-molecule and DiffSBDD multi-molecule SDFs).
+- Loads an A2A reference set (ZINC world subset at `outputs2/a2a_drugs/ADORA2A-world.sdf`).
+- Validates molecules, computes descriptors, and saves per-molecule CSVs.
 
-Run with defaults (analyzes both default PATH1 and PATH2 locations):
+Default inputs
+- Pocket2Mol samples (default PATH1): `outputs2/sample_for_pdb_4EIY_clean.pdb_2026_05_02__11_02_39/SDF`
+- DiffSBDD combined SDF (default PATH2): `outputs2/combined_diffsbdd.sdf`
+- A2A reference SDF (default `--a2a`): `outputs2/a2a_drugs/ADORA2A-world.sdf` (downloaded from ZINC15)
+
+Outputs
+- `results/pocket2mol_generated.csv` (if PATH1 used)
+- `results/diffsbdd_generated.csv`
+
+Descriptors computed (per valid molecule)
+- `smiles`, `MW`, `LogP`, `HBA`, `HBD`, `TPSA`, `RotBonds`, `QED`, `SA_score`, `Lipinski`
+- Similarity: `max_tanimoto` (maximum Tanimoto vs. A2A reference; Morgan radius=2, 2048 bits)
+
+Quick commands
+- Default run:
 ```bash
 python compute_properties.py
 ```
-If both PATH1 and PATH2 are omitted, the script falls back to the repository defaults for both inputs and writes the CSV outputs to `results/`.
+- Custom inputs:
+```bash
+python compute_properties.py --path1 /path/to/pocket2mol_dir --path2 /path/to/diffsbdd.sdf --a2a /path/to/ADORA2A-world.sdf
+```
+
+Notes
+- Fingerprints: Morgan (r=2, nBits=2048).
+- SA score is optional (requires `sascorer`); if unavailable the field is `None`.
+- Use `--plots-only` to regenerate plots from existing CSVs without recomputing descriptors.
+
+
+## Similarity Analysis vs. Known Actives
+Use the direct SDF-based similarity analysis script to compare Pocket2Mol and DiffSBDD against the 14 ChEMBL reference actives in `ChEMBL reference molecules`.
+
+Run the full analysis:
+```bash
+python similarity_analysis.py
+```
+
+This reads:
+- Pocket2Mol SDFs from `outputs2/sample_for_pdb_4EIY_clean.pdb_2026_05_02__11_02_39/SDF`
+- DiffSBDD SDFs from `outputs2/combined_diffsbdd.sdf`
+- 14 ChEMBL reference ligands from `ChEMBL reference molecules/DOWNLOAD-muQF1iIRyjhMqiuLdRuitIuq-3YXqGwME0QTLPrZB4E_eq_.csv`
+
+It writes the combined comparison figure to `results/similarity_vs_known_actives.png`.
 
 Run with Pocket2Mol analysis (provide PATH1):
 ```bash
@@ -161,7 +185,7 @@ Output CSV files:
 - [results/pocket2mol_generated.csv](results/pocket2mol_generated.csv) (if PATH1 provided)
 - [results/diffsbdd_generated.csv](results/diffsbdd_generated.csv) (always, unless you run `--plots-only`)
 
-CSV columns: `smiles`, `valid`, `MW`, `LogP`, `HBA`, `HBD`, `TPSA`, `RotBonds`, `QED`, `SA_score`, `Lipinski`, `max_tanimoto`, `nearest_active`
+CSV columns: `smiles`, `valid`, `MW`, `LogP`, `HBA`, `HBD`, `TPSA`, `RotBonds`, `QED`, `SA_score`, `Lipinski`, `max_tanimoto`
 
 ## `compute_properties.py` Function Reference
 
@@ -173,7 +197,7 @@ Property and validation helpers:
 - `compute_properties(mol)`: Public wrapper around the internal descriptor bundle for validated molecules.
 
 Similarity and fingerprint helpers:
-- `compute_tanimoto_similarity(mol, reference_data)`: Computes the maximum Tanimoto similarity between one generated molecule and the A2A reference set, and returns the nearest active name.
+- `compute_tanimoto_similarity(mol, reference_data)`: Computes the maximum Tanimoto similarity between one generated molecule and the A2A reference set.
 - `get_morgan_fingerprint(mol)`: Sanitizes a copy of the molecule and builds the Morgan fingerprint used for similarity calculations.
 - `load_a2a_reference_fingerprints(a2a_sdf_file)`: Loads the A2A reference SDF and returns fingerprints plus reference names.
 
