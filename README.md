@@ -100,11 +100,12 @@ Notes:
 conda run -n diffsbdd python DiffSBDD-main/inpaint.py \
   DiffSBDD-main/checkpoints/crossdocked_fullatom_cond.ckpt \
   --pdbfile Pocket2Mol/data/4eiy_clean.pdb \
-  --outfile outputs2/4eiy_inpaint.sdf \
-  --ref_ligand DiffSBDD-main/example/5ndu_C_8V2.sdf \
+  --outfile outputs2/4eiy_inpaint_20ligands.sdf \
+  --ref_ligand DiffSBDD-main/example/4eIY_ligand.sdf \
   --fix_atoms DiffSBDD-main/example/fragments.sdf \
   --center pocket \
   --n_samples 100
+
 ```
 
 ## Compute and Compare Properties
