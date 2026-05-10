@@ -60,7 +60,7 @@ Example command:
 conda run -n diffsbdd python DiffSBDD-main/generate_ligands.py \
   DiffSBDD-main/checkpoints/crossdocked_fullatom_cond.ckpt \
   --pdbfile Pocket2Mol/data/4eiy_clean.pdb \
-  --outfile outputs2/4eiy_generate_100.sdf \
+  --outfile outputs2/4eiy_generate_100_merge.sdf \
   --fix_atoms DiffSBDD-main/example/fragments.sdf \
   --center pocket \
   --n_samples 100
